@@ -15,6 +15,9 @@ class PreschoolPoker:
     If a player's hand does not contain a pair, the hand is ranked according to the sum total of its cards.
     '''
 
+    MATCH = "%s versus %s";
+    WINNER = "%s wins!";
+
     def __init__(self):
         self.deck = Deck();
 
@@ -29,13 +32,38 @@ class StudPoker(PreschoolPoker):
 
     def play(self, plyrA, plyrB):
 
+        # Deal cards
         plyrA.draw(2, self.deck);
         plyrB.draw(2, self.deck);
 
+        # Check for winner
         if plyrA.hand() > plyrB.hand():
-            print plyrA.cards, plyrB.cards, "Player 1 wins!";
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
+        elif plyrB.hand() > plyrA.hand():
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
         else:
-            print plyrA.cards, plyrB.cards, "Player 2 wins!";
+            print "DRAW";
 
-game = StudPoker();
-game.play(Player(), Player());
+
+class DrawOnePoker(PreschoolPoker):
+    '''
+    In Draw-1 Poker, each player is permitted to discard one card, and replace it with another from the deck.
+    '''
+
+    def play(self, plyrA, plyrB):
+
+        # Deal cards
+        plyrA.draw(2, self.deck);
+        plyrB.draw(2, self.deck);
+
+        # Take an action (draw, discard, or stand)
+        plyrA.play(self.deck);
+        plyrB.play(self.deck);
+
+        # Check for winner
+        if plyrA.hand() > plyrB.hand():
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
+        elif plyrB.hand() > plyrA.hand():
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
+        else:
+            print "DRAW";
