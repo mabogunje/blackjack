@@ -24,7 +24,10 @@ class PreschoolPoker:
         self.policy = dict();
 
     def play(self, plyrA, plyrB):
-        raise NotImplementedError("You must implement this method");
+
+        # Deal cards
+        plyrA.draw(2, self.deck);
+        plyrB.draw(2, self.deck);
 
 
 class StudPoker(PreschoolPoker):
@@ -33,10 +36,7 @@ class StudPoker(PreschoolPoker):
     '''
 
     def play(self, plyrA, plyrB):
-
-        # Deal cards
-        plyrA.draw(2, self.deck);
-        plyrB.draw(2, self.deck);
+        super(StudPoker, self).play(plyrA, plyrB);
 
         # Check for winner
         if plyrA.hand() > plyrB.hand():
@@ -49,14 +49,11 @@ class StudPoker(PreschoolPoker):
 
 class DrawOnePoker(PreschoolPoker):
     '''
-    In Draw-1 Poker, each player is permitted to discard one card, and replace it with another from the deck.
+    In DrawOnePoker, each player is permitted to discard one card, and replace it with another from the deck.
     '''
 
     def play(self, plyrA, plyrB):
-
-        # Deal cards
-        plyrA.draw(2, self.deck);
-        plyrB.draw(2, self.deck);
+        super(DrawOnePoker, self).play(plyrA, plyrB);
 
         # Save initial states
         cardsA = plyrA.cards;
@@ -66,18 +63,22 @@ class DrawOnePoker(PreschoolPoker):
         moveA = plyrA.play(self.deck);
         moveB = plyrB.play(self.deck);
 
-        # Check for winner
+        # Check for winner ::KLUDGE:: Assumes plyrA as Learner when returning win value
         if plyrA.hand() > plyrB.hand():
             if isinstance(plyrA, Learner):
                 plyrA.learn({cardsA: moveA}, self.WIN);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
+            return self.WIN;
 
         elif plyrB.hand() > plyrA.hand():
             if isinstance(plyrB, Learner):
                 plyrB.learn({cardsB: moveB}, self.WIN);
             
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrB.name;
+            return self.LOSE;
 
         else:
             print "DRAW";
+            return self.LOSE;
+
