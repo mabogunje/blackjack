@@ -17,9 +17,11 @@ class PreschoolPoker:
 
     MATCH = "%s versus %s";
     WINNER = "%s wins!";
+    (LOSE, WIN) = range(0, 2); 
 
     def __init__(self):
         self.deck = Deck();
+        self.policy = dict();
 
     def play(self, plyrA, plyrB):
         raise NotImplementedError("You must implement this method");
@@ -56,14 +58,26 @@ class DrawOnePoker(PreschoolPoker):
         plyrA.draw(2, self.deck);
         plyrB.draw(2, self.deck);
 
+        # Save initial states
+        cardsA = plyrA.cards;
+        cardsB = plyrB.cards;
+
         # Take an action (draw, discard, or stand)
-        plyrA.play(self.deck);
-        plyrB.play(self.deck);
+        moveA = plyrA.play(self.deck);
+        moveB = plyrB.play(self.deck);
 
         # Check for winner
         if plyrA.hand() > plyrB.hand():
-            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
+            if isinstance(plyrA, Learner):
+                plyrA.learn({cardsA: moveA}, self.WIN);
+
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
+
         elif plyrB.hand() > plyrA.hand():
-            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
+            if isinstance(plyrB, Learner):
+                plyrB.learn({cardsB: moveB}, self.WIN);
+            
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrB.name;
+
         else:
             print "DRAW";

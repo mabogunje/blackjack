@@ -12,7 +12,7 @@ class Action:
     Possible Player Moves
     '''
 
-    (STAND, DRAW, DISCARD) = range(0, 3);
+    (STAND, DISCARD) = range(0, 2);
 
 class Player:
     '''
@@ -37,10 +37,13 @@ class Player:
         self.cards.remove(card);
         self.draw(1, deck);
 
+        return (Action.DISCARD, card);
+
     def stand(self):
         '''
         Do Nothing
         '''
+        return Action.STAND;
 
     def hand(self):
         if len(self.cards) == len(set(self.cards)):
@@ -67,17 +70,14 @@ class DumbPlayer(Player):
     '''
 
     def play(self, deck):
-        moves = [Action.STAND, Action.DRAW, Action.DISCARD];
+        moves = [Action.STAND, Action.DISCARD];
         action = choice(moves);
 
         if action == Action.STAND:
-            self.stand();
-
-        if action == Action.DRAW:
-            self.draw(1, deck);
+            return self.stand();
 
         if action == Action.DISCARD:
-            self.discard(choice(self.cards), deck);
+            return self.discard(choice(self.cards), deck);
 
 
 class OddPlayer(Player):
@@ -89,7 +89,7 @@ class OddPlayer(Player):
         odd_cards = filter(lambda card: bool(card & 1), self.cards);
 
         if odd_cards:
-            self.discard(min(odd_cards), deck); 
+            return self.discard(min(odd_cards), deck); 
 
 class SmartPlayer(Player):
     '''
@@ -102,9 +102,9 @@ class SmartPlayer(Player):
 
         if hand not in pairs:
             if Card.ONE in self.cards:
-                self.discard(Card.ONE, deck);
+                return self.discard(Card.ONE, deck);
         else:
-            self.stand();
+            return self.stand();
 
 
 class Learner(Player):
@@ -112,8 +112,32 @@ class Learner(Player):
     Learner progressively learns how to play via its matches (Reinforcement Learning)
     '''
 
+    LEARNING_RATE = 0.5;
+
     def __init__(self, name="PlayerBot"):
         super(Learner, self).__init__(name);
         self.weights = dict();
         self.mapping = dict();
+
+    def play(self, deck):
+        pass;
+
+    def learn(self, policy, result):
+        if not self.weights.values():
+            self.mapping = policy;
+            self.weights = dict.fromkeys(policy.items(), 0.5);
+        else:
+            old = set(policy.items()) & set(self.mapping.items()); # Visited States
+            new = set(policy.items()) - old; # Unvisited States
+
+            if old:
+                for rule in old:
+                    if result > self.weights[rule]:
+                        self.weights[rule] = self.weights[rule]  - (self.weights[rule] - result) * Learner.LEARNING_RATE;
+
+            if new:
+                for rule in new:
+                    self.mapping[rule[0]] = rule[1];
+                    self.weights[rule] = result;
+
 
