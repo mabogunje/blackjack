@@ -21,7 +21,6 @@ class PreschoolPoker:
 
     def __init__(self):
         self.deck = Deck();
-        self.policy = dict();
 
     def play(self, plyrA, plyrB):
 
@@ -67,6 +66,8 @@ class DrawOnePoker(PreschoolPoker):
         if plyrA.hand() > plyrB.hand():
             if isinstance(plyrA, Learner):
                 plyrA.learn({cardsA: moveA}, self.WIN);
+            else:
+                plyrA.learn({cardsA: moveA}, self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
             return self.WIN;
@@ -74,6 +75,8 @@ class DrawOnePoker(PreschoolPoker):
         elif plyrB.hand() > plyrA.hand():
             if isinstance(plyrB, Learner):
                 plyrB.learn({cardsB: moveB}, self.WIN);
+            else:
+                plyrB.learn({cardsB: moveB}, self.LOSE);
             
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrB.name;
             return self.LOSE;

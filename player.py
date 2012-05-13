@@ -109,15 +109,15 @@ class SmartPlayer(Player):
 
 class Learner(Player):
     '''
-    Learner progressively learns how to play via its matches (Reinforcement Learning)
+    Learner learns how to play PreschoolPoker from its matches (Reinforcement Learning)
     '''
 
-    LEARNING_RATE = 0.5;
 
-    def __init__(self, name="PlayerBot"):
+    def __init__(self, name="PlayerBot", rate=0.5):
         super(Learner, self).__init__(name);
         self.weights = dict();
         self.mapping = dict();
+        self.learning_rate = rate;
 
     def play(self, deck):
         pass;
@@ -133,7 +133,7 @@ class Learner(Player):
             if old:
                 for rule in old:
                     if result > self.weights[rule]:
-                        self.weights[rule] = self.weights[rule]  - (self.weights[rule] - result) * Learner.LEARNING_RATE;
+                        self.weights[rule] = self.weights[rule]  + ((result - self.weights[rule]) * self.learning_rate);
 
             if new:
                 for rule in new:
