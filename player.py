@@ -14,7 +14,7 @@ class Action:
 
     (STAND, DISCARD) = range(0, 2);
 
-class Player:
+class Player(object):
     '''
     Base class for a player bot
     '''
@@ -112,12 +112,11 @@ class Learner(Player):
     Learner learns how to play PreschoolPoker from its matches (Reinforcement Learning)
     '''
 
-
     def __init__(self, name="PlayerBot", rate=0.5):
         super(Learner, self).__init__(name);
+        self.learning_rate = rate;
         self.weights = dict();
         self.mapping = dict();
-        self.learning_rate = rate;
 
     def play(self, deck):
         pass;

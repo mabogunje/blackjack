@@ -7,7 +7,7 @@
 from deck import *;
 from player import *;
 
-class PreschoolPoker:
+class PreschoolPoker(object):
     '''
     The game of Preschool Poker involves 2 players who are each dealt 2 cards from a shuffled deck. 
     The deck contains 9 cards: 3 each bearing the values {1, 2, 3}. 
@@ -28,6 +28,15 @@ class PreschoolPoker:
         plyrA.draw(2, self.deck);
         plyrB.draw(2, self.deck);
 
+    def winner(self, plyrA, plyrB):
+
+        if plyrA.hand() > plyrB.hand():
+            return plyrA;
+        elif plyrB.hand() > plyrA.hand():
+            return plyrB;
+        else:
+            return None;
+
 
 class StudPoker(PreschoolPoker):
     '''
@@ -38,9 +47,9 @@ class StudPoker(PreschoolPoker):
         super(StudPoker, self).play(plyrA, plyrB);
 
         # Check for winner
-        if plyrA.hand() > plyrB.hand():
+        if self.winner(plyrA, plyrB) is plyrA:
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
-        elif plyrB.hand() > plyrA.hand():
+        elif self.winner(plyrA, plyrB) is plyrB:
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
         else:
             print "DRAW";
@@ -63,7 +72,7 @@ class DrawOnePoker(PreschoolPoker):
         moveB = plyrB.play(self.deck);
 
         # Check for winner ::KLUDGE:: Assumes plyrA as Learner when returning win value
-        if plyrA.hand() > plyrB.hand():
+        if self.winner(plyrA, plyrB) is plyrA:
             if isinstance(plyrA, Learner):
                 plyrA.learn({cardsA: moveA}, self.WIN);
             else:
@@ -72,7 +81,7 @@ class DrawOnePoker(PreschoolPoker):
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
             return self.WIN;
 
-        elif plyrB.hand() > plyrA.hand():
+        elif self.winner(plyrA, plyrB) is plyrB:
             if isinstance(plyrB, Learner):
                 plyrB.learn({cardsB: moveB}, self.WIN);
             else:
