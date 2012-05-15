@@ -63,6 +63,8 @@ class Player(object):
     def play(self, deck):
         raise NotImplementedError('You must implement this method');
 
+    def __hash__(self):
+        return hash(self.name);
 
 class DumbPlayer(Player):
     '''

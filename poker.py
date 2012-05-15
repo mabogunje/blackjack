@@ -48,11 +48,21 @@ class StudPoker(PreschoolPoker):
 
         # Check for winner
         if self.winner(plyrA, plyrB) is plyrA:
+            if isinstance(plyrA, Learner):
+                plyrA.learn({plyrA.cards: plyrA.stand()}, self.WIN);
+            else:
+                plyrB.learn({plyrB.cards: plyrB.stand()}, self.LOSE);
+
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
         elif self.winner(plyrA, plyrB) is plyrB:
+            if isinstance(plyrB, Learner):
+                plyrB.learn({plyrB.cards: plyrB.stand()}, self.WIN);
+            else:
+                plyrA.learn({plyrA.cards: plyrA.stand()}, self.LOSE);
+
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
         else:
-            print "DRAW";
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), "DRAW";
 
 
 class DrawOnePoker(PreschoolPoker):
@@ -71,12 +81,11 @@ class DrawOnePoker(PreschoolPoker):
         moveA = plyrA.play(self.deck);
         moveB = plyrB.play(self.deck);
 
-        # Check for winner ::KLUDGE:: Assumes plyrA as Learner when returning win value
         if self.winner(plyrA, plyrB) is plyrA:
             if isinstance(plyrA, Learner):
                 plyrA.learn({cardsA: moveA}, self.WIN);
             else:
-                plyrA.learn({cardsA: moveA}, self.LOSE);
+                plyrB.learn({cardsB: moveB}, self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
             return self.WIN;
@@ -85,12 +94,12 @@ class DrawOnePoker(PreschoolPoker):
             if isinstance(plyrB, Learner):
                 plyrB.learn({cardsB: moveB}, self.WIN);
             else:
-                plyrB.learn({cardsB: moveB}, self.LOSE);
+                plyrA.learn({cardsA: moveA}, self.LOSE);
             
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrB.name;
             return self.LOSE;
 
         else:
-            print "DRAW";
+            print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), "DRAW";
             return self.LOSE;
 
