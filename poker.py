@@ -28,7 +28,7 @@ class PreschoolPoker(object):
         plyrA.draw(2, self.deck);
         plyrB.draw(2, self.deck);
 
-        print "= Starting Hands =\n %s: %s\n%s: %s\n" % (plyrA.name, str(plyrA.cards), plyrB.name, str(plyrB.cards));
+        print "= Starting Hands =\n%s: %s\n%s: %s\n" % (plyrA.name, str(plyrA.cards), plyrB.name, str(plyrB.cards));
 
     def winner(self, plyrA, plyrB):
 
@@ -48,19 +48,23 @@ class StudPoker(PreschoolPoker):
     def play(self, plyrA, plyrB):
         super(StudPoker, self).play(plyrA, plyrB);
 
+        # Convert to list of cards to sets for easy comparison
+        cardsA = set(plyrA.cards);
+        cardsB = set(plyrB.cards);
+
         # Check for winner
         if self.winner(plyrA, plyrB) is plyrA:
             if isinstance(plyrA, Learner):
-                plyrA.learn({tuple(plyrA.cards): plyrA.stand()}, self.WIN);
+                plyrA.learn(tuple(cardsA), self.WIN);
             else:
-                plyrB.learn({tuple(plyrB.cards): plyrB.stand()}, self.LOSE);
+                plyrB.learn(tuple(cardsB), self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
         elif self.winner(plyrA, plyrB) is plyrB:
             if isinstance(plyrB, Learner):
-                plyrB.learn({tuple(plyrB.cards): plyrB.stand()}, self.WIN);
+                plyrB.learn(tuple(cardsB), self.WIN);
             else:
-                plyrA.learn({tuple(plyrA.cards): plyrA.stand()}, self.LOSE);
+                plyrA.learn(tuple(cardsA), self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
         else:
@@ -75,28 +79,32 @@ class DrawOnePoker(PreschoolPoker):
     def play(self, plyrA, plyrB):
         super(DrawOnePoker, self).play(plyrA, plyrB);
 
-        # Save initial states
-        cardsA = plyrA.cards;
-        cardsB = plyrB.cards;
-
         # Take an action (draw, discard, or stand)
         moveA = plyrA.play(self.deck);
         moveB = plyrB.play(self.deck);
 
+        print "= Player Moves =\n%s: %s\n%s: %s\n" % (plyrA.name, Action.describe(moveA), plyrB.name, Action.describe(moveB));
+
+        # Convert to sets for easy comparison
+        cardsA = set(plyrA.cards);
+        cardsB = set(plyrB.cards);
+
+        print "= Closing Hands =\n%s: %s\n%s: %s\n" % (plyrA.name, str(plyrA.cards), plyrB.name, str(plyrB.cards));
+
         if self.winner(plyrA, plyrB) is plyrA:
             if isinstance(plyrA, Learner):
-                plyrA.learn({tuple(cardsA): moveA}, self.WIN);
+                plyrA.learn(tuple(cardsA), self.WIN);
             else:
-                plyrB.learn({tuple(cardsB): moveB}, self.LOSE);
+                plyrB.learn(tuple(cardsB), self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
             return self.WIN;
 
         elif self.winner(plyrA, plyrB) is plyrB:
             if isinstance(plyrB, Learner):
-                plyrB.learn({tuple(cardsB): moveB}, self.WIN);
+                plyrB.learn(tuple(cardsB), self.WIN);
             else:
-                plyrA.learn({tuple(cardsA): moveA}, self.LOSE);
+                plyrA.learn(tuple(cardsA), self.LOSE);
             
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrB.name;
             return self.LOSE;

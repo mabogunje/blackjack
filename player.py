@@ -18,6 +18,17 @@ class Action(object):
     def is_discard(move):
         return (move in [Action.DISCARD_ONE, Action.DISCARD_TWO, Action.DISCARD_THREE]);
 
+    @staticmethod
+    def describe(move):
+        descriptions = { None: "Stand",
+                         Action.STAND: "Stand",
+                         Action.DISCARD_ONE: "Discard a (1)",
+                         Action.DISCARD_TWO: "Discard a (2)",
+                         Action.DISCARD_THREE: "Discard a (3)"
+                       };
+
+        return descriptions[move];
+
 class Player(object):
     '''
     Base class for a player bot
@@ -33,6 +44,20 @@ class Player(object):
         '''
 
         self.cards.extend(deck.draw(num));
+
+    def get_moves(self):
+        moves = [Action.STAND];
+
+        if Card.ONE in self.cards:
+            moves.append(Action.DISCARD_ONE);
+
+        if Card.TWO in self.cards:
+            moves.append(Action.DISCARD_TWO);
+
+        if Card.THREE in self.cards:
+            moves.append(Action.DISCARD_THREE);
+
+        return moves;
 
     def discard(self, card, deck):
         '''
@@ -58,7 +83,7 @@ class Player(object):
         if len(self.cards) == len(set(self.cards)):
             return sum(self.cards);
         else:
-            pairs = [self.cards[i] for i,v in enumerate(self.cards) if self.cards.count(v) > 1];
+            pairs = [self.cards[k] for k,v in enumerate(self.cards) if self.cards.count(v) > 1];
 
             if Card.THREE in pairs:
                 return Hand.THREE_PAIR;
@@ -118,7 +143,7 @@ class SmartPlayer(Player):
             return self.stand();
 
 
-class Learner(Player):
+class Learner(SmartPlayer):
     '''
     Learner learns how to play PreschoolPoker from its matches (Reinforcement Learning)
     '''
@@ -127,79 +152,48 @@ class Learner(Player):
         super(Learner, self).__init__(name);
         self.learning_rate = rate;
 
-        '''
-        self.mapping is a a list of all possible state/action pairs
+        self.states = [ set([Card.THREE, Card.THREE]),  # [3,3]
+                        set([Card.TWO, Card.TWO]),      #[2,2]
+                        set([Card.ONE, Card.ONE]),       #[1,1]
+                        set([Card.ONE, Card.TWO]),      #[1,2], [2,1]
+                        set([Card.ONE, Card.THREE]),    #[1,3], [3,1]
+                        set([Card.TWO, Card.THREE])     #[2,3], [3,2]
+                      ];
 
-        ::KLUDGE:: States are duplicated because state/action pairs must be distinct. 
-        There should be a better way to do this
-        '''
-        self.mapping = [ ((Card.THREE, Card.THREE), Action.STAND),            # [3,3]
-                         ((Card.THREE, Card.THREE), Action.DISCARD_THREE),
-                         ((Card.TWO, Card.TWO), Action.STAND),                #[2,2]
-                         ((Card.TWO, Card.TWO), Action.DISCARD_TWO),
-                         ((Card.ONE, Card.ONE), Action.STAND),                #[1,1]
-                         ((Card.ONE, Card.ONE), Action.DISCARD_ONE),
-                         ((Card.ONE, Card.TWO), Action.STAND),                #[1,2]
-                         ((Card.ONE, Card.TWO), Action.DISCARD_ONE),
-                         ((Card.ONE, Card.TWO), Action.DISCARD_TWO),
-                         ((Card.TWO, Card.ONE), Action.STAND),                #[2,1] 
-                         ((Card.TWO, Card.ONE), Action.DISCARD_ONE),
-                         ((Card.TWO, Card.ONE), Action.DISCARD_TWO),
-                         ((Card.ONE, Card.THREE), Action.STAND),              #[1,3]
-                         ((Card.ONE, Card.THREE), Action.DISCARD_ONE),
-                         ((Card.ONE, Card.THREE), Action.DISCARD_THREE),
-                         ((Card.THREE, Card.ONE), Action.STAND),              #[3,1]
-                         ((Card.THREE, Card.ONE), Action.DISCARD_ONE),
-                         ((Card.THREE, Card.ONE), Action.DISCARD_THREE),
-                         ((Card.TWO, Card.THREE), Action.STAND),              #[2,3]
-                         ((Card.TWO, Card.THREE), Action.DISCARD_TWO),
-                         ((Card.TWO, Card.THREE), Action.DISCARD_THREE),
-                         ((Card.THREE, Card.TWO), Action.STAND),              #[3,2]
-                         ((Card.THREE, Card.TWO), Action.DISCARD_TWO),
-                         ((Card.THREE, Card.TWO), Action.DISCARD_THREE)
-                       ];
-
-        # All mappings i.e (state/action pairs) are initially assigned an equal weight
-        self.weights = dict.fromkeys(self.mapping, 0.5);
+        # All states are initially assigned an equal weight
+        self.weights = dict.fromkeys([tuple(x) for x in self.states], 0.5);
 
     def play(self, deck):
         '''
-        Select only the mappings that apply to the current hand
-        and order them by weight
+        Find accessible states and sort by probability of winning
+        - An accessible state will have at least one card 
+          in common with the current state
         '''
-        explored = filter(lambda visited: set(self.cards) == set(visited[0]), self.weights.keys());
-        exploits = sorted(explored, key=lambda x: x[1]);
-
-        discards = { Action.DISCARD_ONE: Card.ONE,
-                     Action.DISCARD_TWO: Card.TWO,
-                     Action.DISCARD_THREE: Card.THREE
-                   };
-
-        action = Action.STAND; # Initialize action variable
+        is_accessible = lambda state: (set(state) & set(self.cards));
+        new_states = filter(is_accessible, self.states);
+        probabilities = [p for p in self.weights.items() if p[0] in new_states]; 
+        probabilities = sorted(probabilities, key=lambda p: p[1]);
 
         '''
-        If there are applicable rules, exploit them and select the 
-        action with the most weight.
+        If there are any better accessible states, try to reach 
+        the state with the best chance of winning.
         '''
-        if exploits:
-            action == exploits[-1][1];
+        if probabilities:
+            desired_state = probabilities[-1];
 
-            if Action.is_discard(action):
-                return self.discard(discards[action], deck);
-            elif action == Action.STAND:
+            if desired_state[1] > self.weights[set(self.cards)]:
+                bad_cards = set(self.cards) - desired_state[0];
+                worst_card = min(list(bad_cards));
+
+                return self.discard(worst_card, deck);
+            else:
                 return self.stand();
         else:
-            return self.stand();
+            return super(Learner, self).play(deck);
 
-    def learn(self, policy, result):
+    def learn(self, state, result):
         '''
-        Given a previous policy (state/action pair) and the corresponding win/lose result, 
-        If the policy result is better than the current weight, reinforce the rule
+        Given a state and its win/loss result, update its weight reinforcing towards the result
         '''
-        old = set(policy.items()) & set(self.mapping); # Visited States
-
-        for rule in old:
-
-            if result > self.weights[rule]:
-                self.weights[rule] = self.weights[rule] + ((result - self.weights[rule]) * self.learning_rate);
+        self.weights[state] = self.weights[state] + (self.learning_rate * (result - self.weights[state]));
 
