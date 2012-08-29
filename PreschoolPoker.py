@@ -14,6 +14,13 @@ from player import *;
 GAMES = [StudPoker(), DrawOnePoker()];
 ROBOTS = [DumbPlayer('Randy'), OddPlayer('OddBall'), SmartPlayer('Deep Preschooler')];
 DEFAULT_TRIALS = 10;
+LEARNING_RATE = 0.7; # EDIT HERE to modify learning rate
+
+MOVES = { Action.STAND: "Stand", 
+          Action.DISCARD_ONE: "Discard a (1)",
+          Action.DISCARD_TWO: "Discard a (2)",
+          Action.DISCARD_THREE: "Discard a (3)"
+         };
 
 def main():
     parser = argparse.ArgumentParser(description='Process PreschoolPoker arguments');
@@ -52,31 +59,30 @@ def run(trials):
     except:
         opponent = Player(raw_input("Enter your name: "));
     finally:
-        player = Learner();
+        player = Learner('PlayerBot', LEARNING_RATE);
 
     players = [player, opponent];
 
     if type(opponent) == type(Player("Instance")):
         while run_interactive(game, players[0], players[1]):
 
-            # Re-initialise player classes and start a new game of the same type
+            # Clear player cards and start a new game of the same type
             game = DrawOnePoker() if isinstance(game, DrawOnePoker) else StudPoker();
-            players = [ getattr(__import__('player'), players[1].__class__.__name__)(players[1].name), 
-                            getattr(__import__('player'), players[0].__class__.__name__)(players[0].name)
-                          ];
+            player.cards = [];
+            opponent.cards = [];
+            players = [players[1], players[0]];
 
     else:
         for i in range(trials):
             game.play(players[0], players[1]);
 
-            # Re-initialise player classes and start a new game of the same type
+            # Clear player cards and start a new game of the same type
             game = DrawOnePoker() if isinstance(game, DrawOnePoker) else StudPoker();
-            players = [ getattr(__import__('player'), players[1].__class__.__name__)(players[1].name), 
-                        getattr(__import__('player'), players[0].__class__.__name__)(players[0].name)
-                      ];
+            player.cards = [];
+            opponent.cards = [];
+            players = [players[1], players[0]];
 
     print player.weights;
-
 
 def run_interactive(game, player, opponent):
     '''
@@ -86,7 +92,7 @@ def run_interactive(game, player, opponent):
     players = [player, opponent];
     bot = player if isinstance(player, Learner) else opponent;
     human = opponent if type(opponent) == type(Player("Instance")) else player;
-    moves = {Action.STAND: "Stand", Action.DISCARD: "Discard"};
+
 
     for p in players:
         p.draw(2, game.deck);
@@ -98,7 +104,7 @@ def run_interactive(game, player, opponent):
         prompt = "> What will you do?";
 
         print prompt;
-        for move,repr in moves:
+        for move,repr in MOVES:
             print "(%d): %s" % (move, repr);
         action = input();
 
@@ -107,7 +113,7 @@ def run_interactive(game, player, opponent):
                 if action == Action.STAND:
                     p.stand();
 
-                if action == Action.DISCARD:
+                if Action.is_discard(action):
                     prompt = "> Discard which card?";
                 
                     print prompt;

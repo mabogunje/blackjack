@@ -7,12 +7,16 @@
 from random import choice;
 from deck import Card, Hand;
 
-class Action:
+class Action(object):
     '''
     Possible Player Moves
     '''
 
-    (STAND, DISCARD) = range(0, 2);
+    (STAND, DISCARD_ONE, DISCARD_TWO, DISCARD_THREE) = range(0, 4);
+
+    @staticmethod
+    def is_discard(move):
+        return (move in [Action.DISCARD_ONE, Action.DISCARD_TWO, Action.DISCARD_THREE]);
 
 class Player(object):
     '''
@@ -34,10 +38,15 @@ class Player(object):
         '''
         Discards card from hand and draws a new card from the deck 
         '''
+        discards = { Card.ONE: Action.DISCARD_ONE, 
+                     Card.TWO: Action.DISCARD_TWO,
+                     Card.THREE: Action.DISCARD_THREE
+                   };
+
         self.cards.remove(card);
         self.draw(1, deck);
 
-        return (Action.DISCARD, card);
+        return discards[card];
 
     def stand(self):
         '''
@@ -72,13 +81,13 @@ class DumbPlayer(Player):
     '''
 
     def play(self, deck):
-        moves = [Action.STAND, Action.DISCARD];
+        moves = [Action.STAND, Action.DISCARD_ONE, Action.DISCARD_TWO, Action.DISCARD_THREE];
         action = choice(moves);
 
         if action == Action.STAND:
             return self.stand();
 
-        if action == Action.DISCARD:
+        if Action.is_discard(action):
             return self.discard(choice(self.cards), deck);
 
 
@@ -117,28 +126,80 @@ class Learner(Player):
     def __init__(self, name="PlayerBot", rate=0.5):
         super(Learner, self).__init__(name);
         self.learning_rate = rate;
-        self.weights = dict();
-        self.mapping = dict();
+
+        '''
+        self.mapping is a a list of all possible state/action pairs
+
+        ::KLUDGE:: States are duplicated because state/action pairs must be distinct. 
+        There should be a better way to do this
+        '''
+        self.mapping = [ ((Card.THREE, Card.THREE), Action.STAND),            # [3,3]
+                         ((Card.THREE, Card.THREE), Action.DISCARD_THREE),
+                         ((Card.TWO, Card.TWO), Action.STAND),                #[2,2]
+                         ((Card.TWO, Card.TWO), Action.DISCARD_TWO),
+                         ((Card.ONE, Card.ONE), Action.STAND),                #[1,1]
+                         ((Card.ONE, Card.ONE), Action.DISCARD_ONE),
+                         ((Card.ONE, Card.TWO), Action.STAND),                #[1,2]
+                         ((Card.ONE, Card.TWO), Action.DISCARD_ONE),
+                         ((Card.ONE, Card.TWO), Action.DISCARD_TWO),
+                         ((Card.TWO, Card.ONE), Action.STAND),                #[2,1] 
+                         ((Card.TWO, Card.ONE), Action.DISCARD_ONE),
+                         ((Card.TWO, Card.ONE), Action.DISCARD_TWO),
+                         ((Card.ONE, Card.THREE), Action.STAND),              #[1,3]
+                         ((Card.ONE, Card.THREE), Action.DISCARD_ONE),
+                         ((Card.ONE, Card.THREE), Action.DISCARD_THREE),
+                         ((Card.THREE, Card.ONE), Action.STAND),              #[3,1]
+                         ((Card.THREE, Card.ONE), Action.DISCARD_ONE),
+                         ((Card.THREE, Card.ONE), Action.DISCARD_THREE),
+                         ((Card.TWO, Card.THREE), Action.STAND),              #[2,3]
+                         ((Card.TWO, Card.THREE), Action.DISCARD_TWO),
+                         ((Card.TWO, Card.THREE), Action.DISCARD_THREE),
+                         ((Card.THREE, Card.TWO), Action.STAND),              #[3,2]
+                         ((Card.THREE, Card.TWO), Action.DISCARD_TWO),
+                         ((Card.THREE, Card.TWO), Action.DISCARD_THREE)
+                       ];
+
+        # All mappings i.e (state/action pairs) are initially assigned an equal weight
+        self.weights = dict.fromkeys(self.mapping, 0.5);
 
     def play(self, deck):
-        pass;
+        '''
+        Select only the mappings that apply to the current hand
+        and order them by weight
+        '''
+        explored = filter(lambda visited: set(self.cards) == set(visited[0]), self.weights.keys());
+        exploits = sorted(explored, key=lambda x: x[1]);
+
+        discards = { Action.DISCARD_ONE: Card.ONE,
+                     Action.DISCARD_TWO: Card.TWO,
+                     Action.DISCARD_THREE: Card.THREE
+                   };
+
+        action = Action.STAND; # Initialize action variable
+
+        '''
+        If there are applicable rules, exploit them and select the 
+        action with the most weight.
+        '''
+        if exploits:
+            action == exploits[-1][1];
+
+            if Action.is_discard(action):
+                return self.discard(discards[action], deck);
+            elif action == Action.STAND:
+                return self.stand();
+        else:
+            return self.stand();
 
     def learn(self, policy, result):
-        if not self.weights.values():
-            self.mapping = policy;
-            self.weights = dict.fromkeys(policy.items(), 0.5);
-        else:
-            old = set(policy.items()) & set(self.mapping.items()); # Visited States
-            new = set(policy.items()) - old; # Unvisited States
+        '''
+        Given a previous policy (state/action pair) and the corresponding win/lose result, 
+        If the policy result is better than the current weight, reinforce the rule
+        '''
+        old = set(policy.items()) & set(self.mapping); # Visited States
 
-            if old:
-                for rule in old:
-                    if result > self.weights[rule]:
-                        self.weights[rule] = self.weights[rule]  + ((result - self.weights[rule]) * self.learning_rate);
+        for rule in old:
 
-            if new:
-                for rule in new:
-                    self.mapping[rule[0]] = rule[1];
-                    self.weights[rule] = result;
-
+            if result > self.weights[rule]:
+                self.weights[rule] = self.weights[rule] + ((result - self.weights[rule]) * self.learning_rate);
 

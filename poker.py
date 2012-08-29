@@ -28,6 +28,8 @@ class PreschoolPoker(object):
         plyrA.draw(2, self.deck);
         plyrB.draw(2, self.deck);
 
+        print "= Starting Hands =\n %s: %s\n%s: %s\n" % (plyrA.name, str(plyrA.cards), plyrB.name, str(plyrB.cards));
+
     def winner(self, plyrA, plyrB):
 
         if plyrA.hand() > plyrB.hand():
@@ -49,16 +51,16 @@ class StudPoker(PreschoolPoker):
         # Check for winner
         if self.winner(plyrA, plyrB) is plyrA:
             if isinstance(plyrA, Learner):
-                plyrA.learn({plyrA.cards: plyrA.stand()}, self.WIN);
+                plyrA.learn({tuple(plyrA.cards): plyrA.stand()}, self.WIN);
             else:
-                plyrB.learn({plyrB.cards: plyrB.stand()}, self.LOSE);
+                plyrB.learn({tuple(plyrB.cards): plyrB.stand()}, self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrA.name;
         elif self.winner(plyrA, plyrB) is plyrB:
             if isinstance(plyrB, Learner):
-                plyrB.learn({plyrB.cards: plyrB.stand()}, self.WIN);
+                plyrB.learn({tuple(plyrB.cards): plyrB.stand()}, self.WIN);
             else:
-                plyrA.learn({plyrA.cards: plyrA.stand()}, self.LOSE);
+                plyrA.learn({tuple(plyrA.cards): plyrA.stand()}, self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), PreschoolPoker.WINNER % plyrB.name;
         else:
@@ -83,18 +85,18 @@ class DrawOnePoker(PreschoolPoker):
 
         if self.winner(plyrA, plyrB) is plyrA:
             if isinstance(plyrA, Learner):
-                plyrA.learn({cardsA: moveA}, self.WIN);
+                plyrA.learn({tuple(cardsA): moveA}, self.WIN);
             else:
-                plyrB.learn({cardsB: moveB}, self.LOSE);
+                plyrB.learn({tuple(cardsB): moveB}, self.LOSE);
 
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrA.name;
             return self.WIN;
 
         elif self.winner(plyrA, plyrB) is plyrB:
             if isinstance(plyrB, Learner):
-                plyrB.learn({cardsB: moveB}, self.WIN);
+                plyrB.learn({tuple(cardsB): moveB}, self.WIN);
             else:
-                plyrA.learn({cardsA: moveA}, self.LOSE);
+                plyrA.learn({tuple(cardsA): moveA}, self.LOSE);
             
             print PreschoolPoker.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % plyrB.name;
             return self.LOSE;
