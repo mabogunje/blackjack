@@ -99,7 +99,7 @@ def run(game, opponent, trials, learning_rate):
 
     print "\nState probabilities:"
     
-    for hand, weight in player.weights.items():
+    for hand, weight in sorted(player.weights.items(), key=lambda w: w[1]):
         print "%s => %s" % (hand, weight);
 
 def run_interactive(game, player, opponent):
