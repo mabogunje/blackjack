@@ -1,30 +1,24 @@
 '''
 @author: Damola Mabogunje
 @contact: damola@mabogunje.net
-@summary: Preschool Poker Player Bots
+@summary: Whitejack Player Bots
 '''
 
 from random import choice;
-from deck import Card, Hand;
+from deck import Card;
 
 class Action(object):
     '''
     Possible Player Moves
     '''
 
-    (STAND, DISCARD_ONE, DISCARD_TWO, DISCARD_THREE) = range(0, 4);
-
-    @staticmethod
-    def is_discard(move):
-        return (move in [Action.DISCARD_ONE, Action.DISCARD_TWO, Action.DISCARD_THREE]);
+    (STAND, DRAW) = range(0, 2);
 
     @staticmethod
     def describe(move):
         descriptions = { None: "Stand",
                          Action.STAND: "Stand",
-                         Action.DISCARD_ONE: "Discard a (1)",
-                         Action.DISCARD_TWO: "Discard a (2)",
-                         Action.DISCARD_THREE: "Discard a (3)"
+                         Action.DRAW: "Request a Hit"
                        };
 
         return descriptions[move];
@@ -42,36 +36,12 @@ class Player(object):
         '''
         Draw a card from the deck
         '''
-
         self.cards.extend(deck.draw(num));
+        
+        return Action.DRAW;
 
     def get_moves(self):
-        moves = [Action.STAND];
-
-        if Card.ONE in self.cards:
-            moves.append(Action.DISCARD_ONE);
-
-        if Card.TWO in self.cards:
-            moves.append(Action.DISCARD_TWO);
-
-        if Card.THREE in self.cards:
-            moves.append(Action.DISCARD_THREE);
-
-        return moves;
-
-    def discard(self, card, deck):
-        '''
-        Discards card from hand and draws a new card from the deck 
-        '''
-        discards = { Card.ONE: Action.DISCARD_ONE, 
-                     Card.TWO: Action.DISCARD_TWO,
-                     Card.THREE: Action.DISCARD_THREE
-                   };
-
-        self.cards.remove(card);
-        self.draw(1, deck);
-
-        return discards[card];
+        return [Action.STAND, Action.DRAW];
 
     def stand(self):
         '''
@@ -80,25 +50,36 @@ class Player(object):
         return Action.STAND;
 
     def hand(self):
-        if len(self.cards) == len(set(self.cards)):
-            return sum(self.cards);
-        else:
-            pairs = [self.cards[k] for k,v in enumerate(self.cards) if self.cards.count(v) > 1];
+        value = sum(self.cards); 
+        
+        if value >= 5: 
+            value = 5;
 
-            if Card.THREE in pairs:
-                return Hand.THREE_PAIR;
+        return value;
 
-            if Card.TWO in pairs:
-                return Hand.TWO_PAIR;
-
-            if Card.ONE in pairs:
-                return Hand.ONE_PAIR;
-    
     def play(self, deck):
         raise NotImplementedError('You must implement this method');
 
     def __hash__(self):
         return hash(self.name);
+
+
+class Dealer(Player):
+    '''
+    The Dealer is required to hit if the value of his hand is less than 4
+    Otherwise, he must stand
+    '''
+
+    def __init__(self, name="Dealer"):
+        super(Dealer, self).__init__(name);
+
+    def play(self, deck):
+
+        if self.hand() < 4:
+            return self.draw(1, deck);
+
+        return self.stand();
+
 
 class DumbPlayer(Player):
     '''
@@ -116,60 +97,33 @@ class DumbPlayer(Player):
             return self.discard(choice(self.cards), deck);
 
 
-class OddPlayer(Player):
+class Learner(Dealer):
     '''
-    OddPlayer always discards the lowest-valued odd-numbered
-    '''
-
-    def play(self, deck):
-        odd_cards = filter(lambda card: bool(card & 1), self.cards);
-
-        if odd_cards:
-            return self.discard(min(odd_cards), deck); 
-
-class SmartPlayer(Player):
-    '''
-    SmartPlayer will (1) never discard a pair; (2) always discard a 1, or (3) stand.
+    Learner plays just like Dealer, but learns from its matches (Reinforcement Learning)
     '''
 
-    def play(self, deck):
-        pairs = [Hand.ONE_PAIR, Hand.TWO_PAIR, Hand.THREE_PAIR];
-        hand = self.hand();
-
-        if hand not in pairs:
-            if Card.ONE in self.cards:
-                return self.discard(Card.ONE, deck);
-        else:
-            return self.stand();
-
-
-class Learner(SmartPlayer):
-    '''
-    Learner learns how to play PreschoolPoker from its matches (Reinforcement Learning)
-    '''
-
-    def __init__(self, name="PlayerBot", rate=0.5):
+    def __init__(self, name="Computer", rate=0.5):
         super(Learner, self).__init__(name);
         self.learning_rate = rate;
 
-        self.states = [ set([Card.THREE, Card.THREE]),  # [3,3]
-                        set([Card.TWO, Card.TWO]),      #[2,2]
-                        set([Card.ONE, Card.ONE]),       #[1,1]
-                        set([Card.ONE, Card.TWO]),      #[1,2], [2,1]
-                        set([Card.ONE, Card.THREE]),    #[1,3], [3,1]
-                        set([Card.TWO, Card.THREE])     #[2,3], [3,2]
+        self.states = [ float('-inf'),  # START
+                        1,              # STATE 1
+                        2,              # STATE 2
+                        3,              # STATE 3
+                        4,              # STATE 4
+                        5,              # BUST
                       ];
 
         # All states are initially assigned an equal weight
-        self.weights = dict.fromkeys([tuple(x) for x in self.states], 0.5);
+        self.weights = dict.fromkeys(tuple(self.states), 0.5);
 
     def play(self, deck):
         '''
         Find accessible states and sort by probability of winning
-        - An accessible state will have at least one card 
-          in common with the current state
+        - An accessible state will have a value greater or equal
+          to the current state, and less than BUST 
         '''
-        is_accessible = lambda state: (set(state) & set(self.cards));
+        is_accessible = lambda state: (state > self.hand()) & (state < 5);
         new_states = filter(is_accessible, self.states);
         probabilities = [p for p in self.weights.items() if p[0] in new_states]; 
         probabilities = sorted(probabilities, key=lambda p: p[1]);
@@ -181,11 +135,8 @@ class Learner(SmartPlayer):
         if probabilities:
             desired_state = probabilities[-1];
 
-            if desired_state[1] > self.weights[set(self.cards)]:
-                bad_cards = set(self.cards) - desired_state[0];
-                worst_card = min(list(bad_cards));
-
-                return self.discard(worst_card, deck);
+            if desired_state[1] > self.weights[self.hand()]:
+                return self.draw(1, deck);
             else:
                 return self.stand();
         else:
