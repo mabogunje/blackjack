@@ -64,21 +64,6 @@ class Player(object):
         return hash(self.name);
 
 
-class Dealer(Player):
-    '''
-    The Dealer is required to hit if the value of his hand is less than 4
-    Otherwise, he must stand
-    '''
-
-    def __init__(self, name="Dealer"):
-        super(Dealer, self).__init__(name);
-
-    def play(self, deck):
-
-        if self.hand() < 4:
-            return self.draw(1, deck);
-
-        return self.stand();
 
 
 class DumbPlayer(Player):
@@ -97,7 +82,7 @@ class DumbPlayer(Player):
             return self.discard(choice(self.cards), deck);
 
 
-class Learner(Dealer):
+class Learner(Player):
     '''
     Learner plays just like Dealer, but learns from its matches (Reinforcement Learning)
     '''
@@ -147,4 +132,21 @@ class Learner(Dealer):
         Given a state and its win/loss result, update its weight reinforcing towards the result
         '''
         self.weights[state] = self.weights[state] + (self.learning_rate * (result - self.weights[state]));
+
+
+class Dealer(Learner):
+    '''
+    Although the Dealer learns from his moves, he is required 
+    to hit if the value of his hand is less than 4, and stand otherwise.
+    '''
+
+    def __init__(self, name="Dealer", rate=0.5):
+        super(Dealer, self).__init__(name, rate);
+
+    def play(self, deck):
+
+        if self.hand() < 4:
+            return self.draw(1, deck);
+
+        return self.stand();
 
