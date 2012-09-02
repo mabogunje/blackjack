@@ -68,23 +68,16 @@ class Player(object):
 
 class DumbPlayer(Player):
     '''
-    DumbPlayer always chooses a random action
+    DumbPlayer always requests a hit
     '''
 
     def play(self, deck):
-        moves = [Action.STAND, Action.DISCARD_ONE, Action.DISCARD_TWO, Action.DISCARD_THREE];
-        action = choice(moves);
-
-        if action == Action.STAND:
-            return self.stand();
-
-        if Action.is_discard(action):
-            return self.discard(choice(self.cards), deck);
+        return self.draw(1, deck);
 
 
-class Learner(Player):
+class Learner(DumbPlayer):
     '''
-    Learner plays just like Dealer, but learns from its matches (Reinforcement Learning)
+    Learner learns from its matches (Reinforcement Learning)
     '''
 
     def __init__(self, name="Computer", rate=0.5):
@@ -120,7 +113,7 @@ class Learner(Player):
         if probabilities:
             desired_state = probabilities[-1];
 
-            if desired_state[1] > self.weights[self.hand()]:
+            if desired_state[1] > self.weights[self.hand()] and desired_state[0] > self.hand():
                 return self.draw(1, deck);
             else:
                 return self.stand();
