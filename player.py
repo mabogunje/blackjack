@@ -5,6 +5,8 @@
 '''
 
 from random import choice;
+from fractions import Fraction;
+
 from deck import Card;
 
 class Action(object):
@@ -83,17 +85,25 @@ class Learner(DumbPlayer):
     def __init__(self, name="Computer", rate=0.5):
         super(Learner, self).__init__(name);
         self.learning_rate = rate;
+        self.samples = 0;
 
-        self.states = [ float('-inf'),  # START
-                        1,              # STATE 1
-                        2,              # STATE 2
-                        3,              # STATE 3
-                        4,              # STATE 4
-                        5,              # BUST
+        self.states = [ 0,  # START
+                        1,  # STATE 1
+                        2,  # STATE 2
+                        3,  # STATE 3
+                        4,  # STATE 4
+                        5,  # BUST
                       ];
 
-        # All states are initially assigned an equal weight
-        self.weights = dict.fromkeys(tuple(self.states), 0.5);
+        '''
+        Creates an m X m probability matrix of state transitions 
+        with an additional 2 slots for the probability of loosing
+        and winning in each state.
+
+        The probability of winning is the very last value in each row.
+        '''
+
+        self.weights = dict((s, list([Fraction()]*(len(self.states)+2))) for s in self.states);
 
     def play(self, deck):
         '''
@@ -101,10 +111,12 @@ class Learner(DumbPlayer):
         - An accessible state will have a value greater or equal
           to the current state, and less than BUST 
         '''
-        is_accessible = lambda state: (state > self.hand()) & (state < 5);
+        is_accessible = lambda state: (state >= self.hand()) and (state < 5);
         new_states = filter(is_accessible, self.states);
-        probabilities = [p for p in self.weights.items() if p[0] in new_states]; 
-        probabilities = sorted(probabilities, key=lambda p: p[1]);
+        probabilities = [p for p in self.weights.items() if p[0] in new_states];
+
+        probabilities = sorted(probabilities, key=lambda p: p[1][-1]); # Sort by probability of winning
+        print probabilities;
 
         '''
         If there are any better accessible states, try to reach 
@@ -113,18 +125,31 @@ class Learner(DumbPlayer):
         if probabilities:
             desired_state = probabilities[-1];
 
-            if desired_state[1] > self.weights[self.hand()] and desired_state[0] > self.hand():
+            if desired_state[1][-1] > self.weights[self.hand()][-1] and desired_state[0] > self.hand():
                 return self.draw(1, deck);
             else:
                 return self.stand();
         else:
             return super(Learner, self).play(deck);
 
-    def learn(self, state, result):
+    def learn(self, old, curr, result):
         '''
-        Given a state and its win/loss result, update its weight reinforcing towards the result
+        Given a previous state, state and its win/loss result, 
+        increase the probability that the old state will result in the current state
+        and that the current state may result in a win.
         '''
-        self.weights[state] = self.weights[state] + (self.learning_rate * (result - self.weights[state]));
+
+        # Count that a new sample has been received
+        self.samples += 1;
+
+        # Update the probability of reaching the result from the current state
+        if result == 1: # ::HACK:: 1 is the value of Whitejack.WIN
+            self.weights[curr][-1] = Fraction(self.weights[curr][-1]+1, self.samples);
+        elif result == 0: # ::HACK:: 0 is the value of Whitejack.LOSE
+            self.weights[curr][-2] = Fraction(self.weights[curr][-2]+1, self.samples);
+
+        # Update the probability of reaching the current state from the old state
+        self.weights[old][curr] = Fraction(self.weights[old][curr]+1, self.samples);
 
 
 class Dealer(Learner):

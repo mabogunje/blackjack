@@ -45,27 +45,19 @@ class Whitejack(object):
         if (Action.STAND in moves) or (5 in [plyrA.hand(), plyrB.hand()]):
             winner = self.winner(plyrA, plyrB);
 
-            if winner is plyrA:
-                if isinstance(plyrA, Learner):
-                    plyrA.learn(plyrA.hand(), self.WIN);
-                else:
-                    plyrB.learn(plyrB.hand(), self.LOSE);
-                    
-                print Whitejack.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % winner.name;
-                return self.WIN;
-
-            elif winner is plyrB:
-                if isinstance(plyrB, Learner):
-                    plyrB.learn(plyrB.hand(), self.WIN);
-                else:
-                    plyrA.learn(plyrA.hand(), self.LOSE);
-                    
-                print Whitejack.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % winner.name;
-                return self.LOSE;
-
-            else:
+            if winner is None:
                 print Whitejack.MATCH % (plyrA.cards, plyrB.cards), "DRAW";
-                self.LOSE;
+                return;
+            else:
+                for p in players:
+                    if isinstance(p, Learner):
+                        if p is winner:
+                            p.learn(p.hand() - p.cards[-1], p.hand(), self.WIN);
+                        else:
+                            p.learn(p.hand() - p.cards[-1], p.hand(), self.LOSE);
+
+                print Whitejack.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % winner.name;
+                return;
         else:
             return self.play(plyrA, plyrB);
 

@@ -109,8 +109,8 @@ def run(game, opponent, trials, learning_rate):
             game.play(players[0], players[1]);
 
             '''
-            Clear player cards
             Start a new game of the same type
+            Clear player cards
             Reverse play order
             '''
 
@@ -123,7 +123,7 @@ def run(game, opponent, trials, learning_rate):
 
     print "\nState probabilities:"
     
-    for hand, weight in sorted(player.weights.items(), key=lambda w: w[1]):
+    for hand, weight in sorted(player.weights.items(), key=lambda w: w[-1]):
         print "%s => %s" % (hand, weight);
 
 def run_interactive(game, player, opponent):
