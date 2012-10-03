@@ -26,7 +26,7 @@ def main():
                        );
 
     parser.add_argument('-o', '--opponent', metavar='OPPONENT', type=int, choices=range(len(ROBOTS)),
-                        help='This is the AI dealer. Must be an integer from [%(choices)s]'
+                        help='This is the AI player. Must be an integer from [%(choices)s]'
                        );
 
     parser.add_argument('-n', '--sample_size', metavar='SAMPLE_SIZE', type=int, nargs='?',
