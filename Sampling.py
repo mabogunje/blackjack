@@ -56,7 +56,7 @@ def run(game, opponent, trials, learning_rate):
         game = GAMES[game];
     
     if not opponent in range(len(ROBOTS)):
-        prompt = "> Who should I play against? (Enter 1 to be my opponent)";
+        prompt = "> Who should I play against?";
         print prompt;
     
         for i,player in enumerate(ROBOTS):
@@ -130,7 +130,7 @@ def run(game, opponent, trials, learning_rate):
 
     print "\nState probabilities:"
     
-    for hand, weight in sorted(player.weights.items(), key=lambda w: w[-1]):
+    for hand, weight in player.weights.items():
         '''
         Print probability matrix in decimal instead of fraction,
         while ignoring the last 2 entries 
