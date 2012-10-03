@@ -2,8 +2,10 @@
 author: Damola Mabogunje
 contact: damola@mabogunje.net
 summary: This program allows the user to pit a Markov learning AI 
-         against an dealer in a game of Whitejack multiple times to 
-         learn an optimal strategy.
+         against a dealer in a game of White or Greyjack multiple 
+         times to learn an optimal strategy. It employs sampling
+         and the resulting transition probability matrix is
+         printed at the end.
 '''
 
 import argparse;
