@@ -22,7 +22,7 @@ class Whitejack(object):
     def __init__(self):
         self.deck = Deck();
 
-    def play(self, plyrA, plyrB):
+    def play(self, plyrA, plyrB, starting_hand=None):
 
         players = [plyrA, plyrB];
         moves = [];
@@ -33,6 +33,11 @@ class Whitejack(object):
                 pass;
             else:
                 p.draw(1, self.deck);
+
+                
+                # `starting_hand` allows you to cheat and specify what hand the player starts with.
+                if not isinstance(p, Dealer) and starting_hand:
+                    p.cards[0] = starting_hand;
             
             print "%s's Hand: %s" % (p.name, p.cards);
             moves.append(p.play(self.deck));
@@ -72,4 +77,13 @@ class Whitejack(object):
             return plyrA;
         else:
             return plyrA if plyrA.hand() > plyrB.hand() else plyrB;
+
+
+class Greyjack(Whitejack):
+    '''
+    This class is merely an alias readability. Greyjack is the same as Whitejack but for Dealer policy. 
+    Dealer policies are defined in the Dealer class.
+    
+    See player.py.
+    '''
 

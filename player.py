@@ -6,8 +6,22 @@
 
 from random import choice;
 from fractions import Fraction;
+from collections import namedtuple;
 
 from deck import Card;
+
+'''
+A policy is a mapping of states to actions. 
+As a namedtuple it works as a wrapper for any function. 
+Allowing us to enforce type-checking for a function 
+as a policy.
+
+Every policy should be uniquely named and used as follows:
+
+    DOUBLE_DOWN = POLICY(function(*args));
+'''
+POLICY = namedtuple('POLICY', 'eval');
+
 
 class Action(object):
     '''
@@ -154,17 +168,29 @@ class Learner(DumbPlayer):
 
 class Dealer(Learner):
     '''
-    Although the Dealer learns from his moves, he is required 
-    to hit if the value of his hand is less than 4, and stand otherwise.
+    Although the Dealer learns from his moves, 
+    He may be required to use a fixed policy
     '''
 
-    def __init__(self, name="Dealer", rate=0.5):
+    # Default Dealer Policies.
+    POLICIES = { 
+                'DRAW_BELOW_THREE': POLICY(lambda dealer, deck: dealer.draw(1, deck) if dealer.hand() < 3 else dealer.stand()),
+                'DRAW_BELOW_FOUR': POLICY(lambda dealer, deck: dealer.draw(1, deck) if dealer.hand() < 4 else dealer.stand())
+               };
+
+
+    def __init__(self, name="Dealer", rate=0.5, policy=POLICY('NONE')):
         super(Dealer, self).__init__(name, rate);
+        self.policy = policy;
 
     def play(self, deck):
+        '''
+        If we don't have a known policy, play based on learnt rules
+        Otherwise use policy
+        '''
 
-        if self.hand() < 4:
-            return self.draw(1, deck);
-
-        return self.stand();
+        if self.policy not in Dealer.POLICIES:
+            return super(Dealer, self).play(deck);
+        else:
+            return Dealer.POLICIES[self.policy](self, deck);
 

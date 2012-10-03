@@ -1,20 +1,19 @@
 '''
 author: Damola Mabogunje
 contact: damola@mabogunje.net
-summary: This program allows the user to pit a Reinforcement learning AI 
-         against an AI opponent in a game of Whitejack multiple times to 
-         allow the AI to learn an optimal strategy.
+summary: This program allows the user to pit a Markov learning AI 
+         against an dealer in a game of Whitejack multiple times to 
+         learn an optimal strategy.
 '''
 
 import argparse;
-from blackjack import Whitejack;
+from blackjack import *;
 from player import *;
 
 
-GAMES = [Whitejack()];
+GAMES = [Whitejack(), Greyjack()];
 ROBOTS = [Learner('Learner')];
-DEFAULT_TRIALS = 10;
-LEARNING_RATE = 0.5; # EDIT HERE to modify default learning rate
+LEARNING_RATE = 0.5;
 
 def main():
     parser = argparse.ArgumentParser(prog="Whitejack", description="%(prog)s is a reinforcement learning program for a simplified version of blackjack.\
@@ -28,9 +27,9 @@ def main():
                         help='This is the AI dealer. Must be an integer from [%(choices)s]'
                        );
 
-    parser.add_argument('-n', '--trials', metavar='NUMBER_OF_TRIALS', type=int, nargs='?',
-                        default=DEFAULT_TRIALS,
-                        help='Number of times to play game. Must be a positive integer.'
+    parser.add_argument('-n', '--sample_size', metavar='SAMPLE_SIZE', type=int, nargs='?',
+                        required=True,
+                        help='Number of games per sample. Must be a positive integer.'
                        );
 
     parser.add_argument('-r', '--rate', metavar='LEARNING_RATE', type=float, nargs='?',
@@ -40,8 +39,7 @@ def main():
     
     args = parser.parse_args();
 
-    run(args.type, args.opponent, args.trials, args.rate);
-
+    run(args.type, args.opponent, args.sample_size, args.rate);
 
 def run(game, opponent, trials, learning_rate):
     
@@ -71,6 +69,7 @@ def run(game, opponent, trials, learning_rate):
         opponent = ROBOTS[opponent];
     
     player = Dealer('Dealer', learning_rate);
+    player.policy = Dealer.POLICIES['DRAW_BELOW_FOUR'] if isinstance(game, Whitejack) else Dealer.POLICIES['DRAW_BELOW_THREE'];
 
     players = [player, opponent];
 
@@ -105,26 +104,38 @@ def run(game, opponent, trials, learning_rate):
         for p in players:
             del p.cards[:];
     else:
-        for i in range(trials):
-            game.play(players[0], players[1]);
-
+        for card in players[0].states:
             '''
-            Start a new game of the same type
-            Clear player cards
-            Reverse play order
+            I conveniently use `card` here because a starting card of 1-4 
+            is equivalent to a hand of 1-4.
             '''
 
-            game = Whitejack();
+            for j in range(trials):
+                game.play(players[0], players[1], card);
 
-            for p in players:
-                del p.cards[:];
+                '''
+                Start a new game of the same type
+                Clear player cards
+                Reverse play order
+                '''
 
-            players = [players[1], players[0]];
+                game = Whitejack();
+
+                for p in players:
+                    del p.cards[:];
+
+                players = [players[1], players[0]];
 
     print "\nState probabilities:"
     
     for hand, weight in sorted(player.weights.items(), key=lambda w: w[-1]):
-        print "%s => %s" % (hand, weight);
+        '''
+        Print probability matrix in decimal instead of fraction,
+        while ignoring the last 2 entries 
+        (probabilities of win & loss for that state)
+        '''
+
+        print "%s => %s" % (hand, map(float, weight[:-2]));
 
 def run_interactive(game, player, opponent):
     '''
@@ -171,7 +182,7 @@ def run_interactive(game, player, opponent):
     '''
     prompt = "> Play again (y/n)?";
     return (raw_input(prompt).lower() == 'y');
-'''
+    '''
 
 if __name__ == "__main__":
     main();
