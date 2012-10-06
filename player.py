@@ -93,13 +93,12 @@ class DumbPlayer(Player):
 
 class Learner(DumbPlayer):
     '''
-    Learner learns from its matches (Reinforcement Learning)
+    Learner learns from its matches (Sampling)
     '''
 
     def __init__(self, name="Computer", rate=0.5):
         super(Learner, self).__init__(name);
         self.learning_rate = rate;
-        self.samples = 0;
 
         self.states = [ 0,  # START
                         1,  # STATE 1
@@ -108,6 +107,8 @@ class Learner(DumbPlayer):
                         4,  # STATE 4
                         5,  # BUST
                       ];
+        
+        self.samples = dict.fromkeys(self.states, 0);
 
         '''
         Creates an m X m probability matrix of state transitions 
@@ -117,7 +118,15 @@ class Learner(DumbPlayer):
         The probability of winning is the very last value in each row.
         '''
 
-        self.weights = dict((s, list([Fraction()]*(len(self.states)+2))) for s in self.states);
+        self.weights = dict((s, list([0]*(len(self.states)+1))) for s in self.states);
+
+    def draw(self, num, deck):
+        old = self.hand();
+        action = super(Learner, self).draw(num, deck);
+        
+        self.learn(old, self.hand(), None);
+        return action;
+        
 
     def play(self, deck):
         '''
@@ -130,7 +139,6 @@ class Learner(DumbPlayer):
         probabilities = [p for p in self.weights.items() if p[0] in new_states];
 
         probabilities = sorted(probabilities, key=lambda p: p[1][-1]); # Sort by probability of winning
-        print probabilities;
 
         '''
         If there are any better accessible states, try to reach 
@@ -140,7 +148,10 @@ class Learner(DumbPlayer):
             desired_state = probabilities[-1];
 
             if desired_state[1][-1] > self.weights[self.hand()][-1] and desired_state[0] > self.hand():
-                return self.draw(1, deck);
+                action = self.draw(1, deck);
+                self.learn(self.hand() - self.cards[-1], self.hand(), None);
+
+                return action;
             else:
                 return self.stand();
         else:
@@ -153,17 +164,28 @@ class Learner(DumbPlayer):
         and that the current state may result in a win.
         '''
 
-        # Count that a new sample has been received
-        self.samples += 1;
+        # 1 is Whitejack.WIN
+        if result == 1:
+            self.samples[curr] += 1;
+            self.weights[curr][-1] += 1;
+        else:
+            self.samples[old] += 1;
+            self.weights[old][curr] += 1;
 
-        # Update the probability of reaching the result from the current state
-        if result == 1: # ::HACK:: 1 is the value of Whitejack.WIN
-            self.weights[curr][-1] = Fraction(self.weights[curr][-1]+1, self.samples);
-        elif result == 0: # ::HACK:: 0 is the value of Whitejack.LOSE
-            self.weights[curr][-2] = Fraction(self.weights[curr][-2]+1, self.samples);
-
-        # Update the probability of reaching the current state from the old state
-        self.weights[old][curr] = Fraction(self.weights[old][curr]+1, self.samples);
+    def calculate_weights(self, state=None):
+        '''
+        Calculates the probability weights of transitions.
+        By default, this updates the whole matrix but can
+        be limited to a specific state
+        '''
+        
+        if state is not None and self.samples[state] > 0:
+            self.weights[state] = map(lambda w: Fraction(w, self.samples[state]), self.weights[state]);
+        else:
+            for key in self.states:
+                if self.samples[key] > 0:
+                    self.weights[key] = map(lambda w: Fraction(w, self.samples[key]), self.weights[key]);
+        
 
 
 class Dealer(Learner):
@@ -179,7 +201,7 @@ class Dealer(Learner):
                };
 
 
-    def __init__(self, name="Dealer", rate=0.5, policy=POLICY('NONE')):
+    def __init__(self, name="Dealer", rate=0.5, policy=POLICY(None)):
         super(Dealer, self).__init__(name, rate);
         self.policy = policy;
 
@@ -189,8 +211,8 @@ class Dealer(Learner):
         Otherwise use policy
         '''
 
-        if self.policy not in Dealer.POLICIES:
+        if id(self.policy) not in map(id, Dealer.POLICIES.values()):
             return super(Dealer, self).play(deck);
         else:
-            return Dealer.POLICIES[self.policy](self, deck);
+            return self.policy.eval(self, deck);
 

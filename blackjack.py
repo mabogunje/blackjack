@@ -16,7 +16,7 @@ class Whitejack(object):
     '''
 
     MATCH = "%s versus %s";
-    WINNER = "%s wins!\n";
+    WINNER = "%s wins!";
     (LOSE, WIN) = range(0, 2); 
 
     def __init__(self):
@@ -27,17 +27,19 @@ class Whitejack(object):
         players = [plyrA, plyrB];
         moves = [];
 
+
         # Deal cards if they have not been dealt, then show hand and decide on next move.
         for p in players:
             if p.cards:
                 pass;
             else:
-                p.draw(1, self.deck);
+                # Rig dealer `starting_hand` if provided
+                if starting_hand and isinstance(p, Dealer):
+                    p.cards.append(starting_hand);
+                    p.learn(0, starting_hand, None);
+                else:
+                    p.draw(1, self.deck);
 
-                
-                # `starting_hand` allows you to cheat and specify what hand the player starts with.
-                if not isinstance(p, Dealer) and starting_hand:
-                    p.cards[0] = starting_hand;
             
             print "%s's Hand: %s" % (p.name, p.cards);
             moves.append(p.play(self.deck));
@@ -52,17 +54,12 @@ class Whitejack(object):
 
             if winner is None:
                 print Whitejack.MATCH % (plyrA.cards, plyrB.cards), "DRAW";
-                return;
             else:
-                for p in players:
-                    if isinstance(p, Learner):
-                        if p is winner:
-                            p.learn(p.hand() - p.cards[-1], p.hand(), self.WIN);
-                        else:
-                            p.learn(p.hand() - p.cards[-1], p.hand(), self.LOSE);
-
+                winner.learn(5,0, None); # ::HACK:: Force learning that BUST takes you START
+                winner.learn(winner.hand() - winner.cards[-1], winner.hand(), self.WIN);
                 print Whitejack.MATCH % (plyrA.cards, plyrB.cards), self.WINNER % winner.name;
-                return;
+
+            return;
         else:
             return self.play(plyrA, plyrB);
 

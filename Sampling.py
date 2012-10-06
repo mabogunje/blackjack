@@ -8,7 +8,7 @@ summary: This program allows the user to pit a Markov learning AI
          printed at the end.
 '''
 
-import argparse;
+import argparse, math;
 from blackjack import *;
 from player import *;
 
@@ -29,10 +29,11 @@ def main():
                         help='This is the AI player. Must be an integer from [%(choices)s]'
                        );
 
-    parser.add_argument('-n', '--sample_size', metavar='SAMPLE_SIZE', type=int, nargs='?',
+    parser.add_argument('-n', '--samplings', metavar='SAMPLINGS', type=int, nargs='?',
                         required=True,
-                        help='Number of games per sample. Must be a positive integer.'
+                        help='Number of sample games. Must be a positive integer.'
                        );
+
 
     parser.add_argument('-r', '--rate', metavar='LEARNING_RATE', type=float, nargs='?',
                         default=LEARNING_RATE,
@@ -41,9 +42,9 @@ def main():
     
     args = parser.parse_args();
 
-    run(args.type, args.opponent, args.sample_size, args.rate);
+    run(args.type, args.opponent, args.samplings, args.rate);
 
-def run(game, opponent, trials, learning_rate):
+def run(game, opponent, samplings, learning_rate):
     
     if not game in range(len(GAMES)):
         prompt = "> Which Blackjack rules do you play by?";
@@ -65,6 +66,7 @@ def run(game, opponent, trials, learning_rate):
         try:
             opponent = ROBOTS[input()] ;
             opponent.learning_rate = learning_rate;
+            opponent.samplings = samplings;
         except:
             opponent = Player(raw_input("Enter your name: "));
     else:
@@ -77,67 +79,55 @@ def run(game, opponent, trials, learning_rate):
 
     print '''
           ============================
-                GAME START
+                GAMES START
           ============================
           '''
+    trials = samplings;
 
-    for p in players:
-        p.draw(1, game.deck);
+    for state in range(1,5):
+        games = [state]*trials;
+        
+        for hand in games:
+            game.play(players[0], players[1], hand);
 
-    if type(opponent) == type(Player("Instance")):
-        while run_interactive(game, players[0], players[1]):
-            pass; # Keep Prompting
+            '''
+            Start a new game of the same type
+            Clear player cards
+            Reverse play order
+            '''
 
-        winner = game.winner(player, opponent);
+            game = Whitejack();
+            for p in players: del p.cards[:];
 
-        if winner:
-            losers = [p for p in players if p is not winner];
-
-            if isinstance(winner, Learner):
-                winner.learn(winner.hand(), game.WIN);
-            elif isinstance(losers[0], Learner):
-                losers[0].learn(losers[0].hand(), game.LOSE);
+            #players = [players[1], players[0]];
             
-            print "Winner: %s" % winner.name;
-            
-        else:
-             print "Draw";
-
+        '''
+        Get the probability of players transitioning to the next state
+        and update the number of games to run for that state accordingly.
+        '''
         for p in players:
-            del p.cards[:];
-    else:
-        for card in players[0].states:
-            '''
-            I conveniently use `card` here because a starting card of 1-4 
-            is equivalent to a hand of 1-4.
-            '''
-
-            for j in range(trials):
-                game.play(players[0], players[1], card);
-
+            if state > 3:
                 '''
-                Start a new game of the same type
-                Clear player cards
-                Reverse play order
+                Since START (0) and BUST (5) are not playable states, 
+                We force their calculation
                 '''
+                p.calculate_weights(0);
+                p.calculate_weights(5);
 
-                game = Whitejack();
-
-                for p in players:
-                    del p.cards[:];
-
-                players = [players[1], players[0]];
-
-    print "\nState probabilities:"
+            p.calculate_weights(state);
+        
+        print "\n";
     
-    for hand, weight in player.weights.items():
+    print "\nState probabilities:"
+
+    for hand, weight in sorted(player.weights.items(), key=lambda s: s[0]):
         '''
         Print probability matrix in decimal instead of fraction,
         while ignoring the last 2 entries 
         (probabilities of win & loss for that state)
         '''
+        print "%s => %s" % (hand, map(float, weight));
 
-        print "%s => %s" % (hand, map(float, weight[:-2]));
 
 def run_interactive(game, player, opponent):
     '''

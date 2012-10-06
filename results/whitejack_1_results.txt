@@ -1,0 +1,41 @@
+
+          ============================
+                GAMES START
+          ============================
+          
+Dealer's Hand: [1]
+Learner's Hand: [1]
+Dealer performed 'Request a Hit'
+Learner performed 'Stand'
+[1, 3] versus [1] Dealer wins!
+
+
+Dealer's Hand: [2]
+Learner's Hand: [4]
+Dealer performed 'Request a Hit'
+Learner performed 'Stand'
+[2, 2] versus [4] DRAW
+
+
+Dealer's Hand: [3]
+Learner's Hand: [1]
+Dealer performed 'Request a Hit'
+Learner performed 'Stand'
+[3, 4] versus [1] Learner wins!
+
+
+Dealer's Hand: [4]
+Learner's Hand: [2]
+Dealer performed 'Stand'
+Learner performed 'Stand'
+[4] versus [2] Dealer wins!
+
+
+
+State probabilities:
+0 => [0.0, 0.25, 0.25, 0.25, 0.25, 0.0, 0.0]
+1 => [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+2 => [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+3 => [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+4 => [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+5 => [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
