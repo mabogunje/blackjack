@@ -4,7 +4,9 @@
 @summary: Whitejack Player Bots
 '''
 
+import numpy;
 from random import choice;
+from math import floor, ceil;
 from fractions import Fraction;
 from collections import namedtuple;
 
@@ -28,18 +30,18 @@ class Action(object):
     Possible Player Moves
     '''
 
-    (STAND, DRAW) = range(0, 2);
+    (STAND, HIT) = range(0, 2);
 
     @staticmethod
     def describe(move):
-        descriptions = { None: "Stand",
-                         Action.STAND: "Stand",
-                         Action.DRAW: "Request a Hit"
+        descriptions = { None: "hold",
+                         Action.STAND: "hold",
+                         Action.HIT: "hit"
                        };
 
         return descriptions[move];
 
-class Player(object):
+class WhitejackPlayer(object):
     '''
     Base class for a player bot
     '''
@@ -54,10 +56,10 @@ class Player(object):
         '''
         self.cards.extend(deck.draw(num));
         
-        return Action.DRAW;
+        return Action.HIT;
 
     def get_moves(self):
-        return [Action.STAND, Action.DRAW];
+        return [Action.STAND, Action.HIT];
 
     def stand(self):
         '''
@@ -82,7 +84,7 @@ class Player(object):
 
 
 
-class DumbPlayer(Player):
+class DumbPlayer(WhitejackPlayer):
     '''
     DumbPlayer always requests a hit
     '''
@@ -187,7 +189,6 @@ class Learner(DumbPlayer):
                     self.weights[key] = map(lambda w: Fraction(w, self.samples[key]), self.weights[key]);
         
 
-
 class Dealer(Learner):
     '''
     Although the Dealer learns from his moves, 
@@ -197,14 +198,15 @@ class Dealer(Learner):
     # Default Dealer Policies.
     POLICIES = { 
                 'DRAW_BELOW_THREE': POLICY(lambda dealer, deck: dealer.draw(1, deck) if dealer.hand() < 3 else dealer.stand()),
-                'DRAW_BELOW_FOUR': POLICY(lambda dealer, deck: dealer.draw(1, deck) if dealer.hand() < 4 else dealer.stand())
+                'DRAW_BELOW_FOUR': POLICY(lambda dealer, deck: dealer.draw(1, deck) if dealer.hand() < 4 else dealer.stand()),
+                'DRAW_BELOW_SEVENTEEN': POLICY(lambda dealer, deck: dealer.draw(1, deck) if dealer.hand() < 17 else dealer.stand())
                };
 
 
     def __init__(self, name="Dealer", rate=0.5, policy=POLICY(None)):
         super(Dealer, self).__init__(name, rate);
         self.policy = policy;
-
+        
     def play(self, deck):
         '''
         If we don't have a known policy, play based on learnt rules
@@ -215,4 +217,142 @@ class Dealer(Learner):
             return super(Dealer, self).play(deck);
         else:
             return self.policy.eval(self, deck);
+
+    def upcard(self):
+        '''
+        First card dealt to dealer is his upcard and thus public
+        '''
+        return self.cards[0];
+
+
+class BlackjackPlayer(WhitejackPlayer):
+    '''
+    This player knows the stationary probabilities of reaching terminal states 
+    for certain dealer policies. With this knowledge it can determine what action 
+    to take in any state against a dealer using a known policy.
+    '''
+
+    # Terminal Stationary Probabilities for dealer policies 
+    P_DEALER = dict();
+    P_DEALER[Dealer.POLICIES['DRAW_BELOW_SEVENTEEN']] = numpy.matrix([[0.13, 0.01, 0.12, 0.01, 0.12, 0.01, 0.10, 0.01, 0.12, 0.40],
+                                                                      [0.12, 0.01, 0.12, 0.01, 0.11, 0.01, 0.11, 0.01, 0.12, 0.42],
+                                                                      [0.10, 0.08, 0.11, 0.00, 0.11, 0.01, 0.10, 0.01, 0.10, 0.43],
+                                                                      [0.37, 0.00, 0.07, 0.08, 0.08, 0.00, 0.08, 0.01, 0.08, 0.27],
+                                                                      [0.14, 0.00, 0.36, 0.00, 0.06, 0.08, 0.07, 0.00, 0.07, 0.25],
+                                                                      [0.13, 0.00, 0.13, 0.00, 0.35, 0.00, 0.05, 0.08, 0.07, 0.24],
+                                                                      [0.12, 0.00, 0.12, 0.00, 0.12, 0.00, 0.34, 0.00, 0.12, 0.22],
+                                                                      [0.12, 0.00, 0.12, 0.00, 0.12, 0.00, 0.12, 0.00, 0.34, 0.22],
+                                                                      [0.11, 0.00, 0.11, 0.00, 0.10, 0.00, 0.10, 0.00, 0.10, 0.48],
+                                                                      [0.05, 0.11, 0.05, 0.10, 0.05, 0.10, 0.05, 0.11, 0.16, 0.24],
+                                                                      [0.10, 0.00, 0.10, 0.00, 0.10, 0.00, 0.10, 0.00, 0.10, 0.52],
+                                                                      [0.05, 0.10, 0.05, 0.10, 0.05, 0.10, 0.05, 0.10, 0.15, 0.27],
+                                                                      [0.09, 0.00, 0.09, 0.00, 0.09, 0.00, 0.09, 0.00, 0.09, 0.55],
+                                                                      [0.05, 0.09, 0.05, 0.09, 0.05, 0.09, 0.05, 0.09, 0.15, 0.30],
+                                                                      [0.09, 0.00, 0.09, 0.00, 0.09, 0.00, 0.09, 0.00, 0.09, 0.58],
+                                                                      [0.06, 0.09, 0.06, 0.09, 0.06, 0.09, 0.06, 0.09, 0.14, 0.33],
+                                                                      [0.08, 0.00, 0.08, 0.00, 0.08, 0.00, 0.08, 0.00, 0.08, 0.61],
+                                                                      [0.06, 0.08, 0.06, 0.08, 0.06, 0.08, 0.06, 0.08, 0.14, 0.35],
+                                                                      [1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 0.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 0.00, 0.00, 1.00, 0.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00, 0.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00, 0.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00, 0.00],
+                                                                      [0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00]
+                                                                     ]);
+
+    def __init__(self, name="Computer", rate=0.5):
+        super(BlackjackPlayer, self).__init__(name);
+
+    def hand(self):
+        return sum(self.cards); 
+
+    def min_hand(self, policy):
+        '''
+        Returns the minimum hand on which a dealer will stand 
+        using policy.
+
+        ::KLUDGE:: Should be a property of the policy
+        '''
+        if policy is Dealer.POLICIES['DRAW_BELOW_SEVENTEEN']:
+            return 17;
+
+        return None;
+
+    def play(self, deck, policy, upcard):
+
+        # Always hit before the dealers lowest possible stand
+        if self.hand() < self.min_hand(policy):
+            return self.draw(1, deck);
+
+        '''
+        We add the least possible additional card to upcard to get the least possible
+        belief state. Then we deduct 4 from this value to get our starting row into the 
+        P_DEALER matrix because state 0,1,2,3 are omitted in our matrix.
+
+        For our starting column, we simply deduct the value of the lowest state the
+        dealer will stand on.
+
+        ::KLUDGE::
+        ciel() is being used to account for soft states. I valued my ACE at 11.5 instead
+        of 11 so it could access soft states when present in a hand by rounding up.
+        So hand comparison must be done using floor()
+        '''
+        row = ceil(upcard + min(deck.CARDS)) - 4;
+        col = ceil(self.hand() - self.min_hand(policy));
+
+        move = self.think(policy, row, col);
+
+        if move is Action.HIT:
+            return self.draw(1, deck);
+        else:
+            return self.stand();
+        
+
+    def think(self, policy, row, col):
+        '''
+        Given a dealer policy, and row and column into the transition matrix, 
+        the player determines the best action and returns it.
+        '''
+
+        # Get relevant sub-matrix
+        pDealer = BlackjackPlayer.P_DEALER[policy][row:, 0:];
+
+        #print row, col;
+        #print pDealer;
+
+        # Calculate possible outcomes
+        outcomes = numpy.array([[p[0, col:8].sum(), # p(LOSE)
+                                 p[0, col] if (row <= 8 and col < 9)  else p[0, col:col+2].sum(), # p(DRAW)
+                                (p[0, 9] + p[0, 0:col].sum())] # {p(BUST) +  p(WORSE_HAND)} = p(WIN)
+                                for p in pDealer
+                               ]
+                              );
+        numpy.resize(outcomes, (numpy.size(pDealer, 0), 3)); # For readability on print
+        #print outcomes;
+
+        expected_outcomes = [max(p) for p in outcomes];
+        rewards = [];
+
+        for i, p in enumerate(expected_outcomes):
+            '''
+            If we are likely not to lose this hand, reward. Otherwise, penalise
+            '''
+            if expected_outcomes[i] > outcomes[i, 0]:
+                rewards.append(expected_outcomes[i] * 1);
+            else:
+                rewards.append(expected_outcomes[i] * -1);
+                
+        rating = sum(rewards);
+        #print rating;
+
+        # Decide action based on rating       
+        if rating >= 0: 
+            return Action.STAND;
+        else:
+            return Action.HIT;
+
 
